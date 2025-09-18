@@ -1,13 +1,15 @@
 services:
   php-fpm:
-    image: php:8.4-fpm-alpine
+    build: { context: ., dockerfile: docker/php-fpm.Dockerfile }
     working_dir: /app
-    volumes: [ ".:/app" ]
     environment:
       DB_DSN: "pgsql:host=postgres;port=5432;dbname=app"
       DB_USER: "app"
       DB_PASS: "app"
-    depends_on: [ postgres ]
+    volumes: [ ".:/app" ]
+    depends_on:
+      postgres:
+        condition: service_healthy
 
   nginx:
     image: nginx:alpine
@@ -18,23 +20,32 @@ services:
     depends_on: [ php-fpm ]
 
   worker:
-    image: php:8.4-cli-alpine
+    build: { context: ., dockerfile: docker/php-cli.Dockerfile }
     working_dir: /app
     command: ["php","worker.php"]
-    volumes: [ ".:/app" ]
     environment:
       DB_DSN: "pgsql:host=postgres;port=5432;dbname=app"
       DB_USER: "app"
       DB_PASS: "app"
-    depends_on: [ postgres ]
+    volumes: [ ".:/app" ]
+    depends_on:
+      postgres:
+        condition: service_healthy
 
   postgres:
-    image: postgres:16
-    environment:
-      POSTGRES_DB: app
-      POSTGRES_USER: app
-      POSTGRES_PASSWORD: app
-    volumes: [ "pgdata:/var/lib/postgresql/data", "./db/migrations:/docker-entrypoint-initdb.d:ro" ]
+      image: postgres:16
+      environment:
+        POSTGRES_DB: app
+        POSTGRES_USER: app
+        POSTGRES_PASSWORD: app
+      healthcheck:
+        test: ["CMD-SHELL", "pg_isready -U app -d app"]
+        interval: 2s
+        timeout: 3s
+        retries: 30
+      volumes:
+        - "pgdata:/var/lib/postgresql/data"
+        - "./db/migrations:/docker-entrypoint-initdb.d:ro"
 
 volumes:
   pgdata:
