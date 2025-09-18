@@ -10,7 +10,6 @@ require __DIR__ . '/../vendor/autoload.php';
 
 $app = AppFactory::create();
 
-// Middleware
 $app->addBodyParsingMiddleware();
 $app->addRoutingMiddleware();
 $app->addErrorMiddleware(true, true, true);
@@ -21,21 +20,17 @@ $jsend = static function (Response $res, array $data, int $status = 200): Respon
     return $res->withHeader('Content-Type', 'application/json')->withStatus($status);
 };
 
-// Routes
-$app->get('/', function (Request $req, Response $res) use ($jsend): Response {
-    return $jsend($res, ['status' => 'ok', 'service' => 'php-postgres-api']);
-});
+// base routes
+$app->get('/', fn(Request $q, Response $r) => $jsend($r, ['status' => 'ok', 'service' => 'php-postgres-api']));
+$app->get('/health', fn(Request $q, Response $r) => $jsend($r, ['status' => 'ok']));
+$app->map(
+    ['GET', 'POST', 'PUT', 'DELETE'],
+    '/_echo',
+    fn(Request $q, Response $r)
+    => $jsend($r, ['method' => $q->getMethod(), 'query' => $q->getQueryParams(), 'body' => (array)$q->getParsedBody()])
+);
 
-$app->get('/health', function (Request $req, Response $res) use ($jsend): Response {
-    return $jsend($res, ['status' => 'ok']);
-});
-
-$app->map(['GET', 'POST', 'PUT', 'DELETE'], '/_echo', function (Request $req, Response $res) use ($jsend): Response {
-    return $jsend($res, [
-        'method' => $req->getMethod(),
-        'query'  => $req->getQueryParams(),
-        'body'   => (array)$req->getParsedBody(),
-    ]);
-});
+// tasks routes
+(require __DIR__ . '/../src/Routes/tasks.php')($app, $jsend);
 
 $app->run();
