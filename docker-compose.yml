@@ -3,9 +3,11 @@ services:
     build: { context: ., dockerfile: docker/php-fpm.Dockerfile }
     working_dir: /app
     environment:
-      DB_DSN: "pgsql:host=postgres;port=5432;dbname=app"
-      DB_USER: "app"
-      DB_PASS: "app"
+      DB_DSN: ${DB_DSN}
+      DB_USER: ${DB_USER}
+      DB_PASS: ${DB_PASS}
+      LOG_PATH: ${LOG_PATH}
+
     volumes: [ ".:/app" ]
     depends_on:
       postgres:
@@ -24,9 +26,10 @@ services:
     working_dir: /app
     command: ["php","worker.php"]
     environment:
-      DB_DSN: "pgsql:host=postgres;port=5432;dbname=app"
-      DB_USER: "app"
-      DB_PASS: "app"
+      DB_DSN: ${DB_DSN}
+      DB_USER: ${DB_USER}
+      DB_PASS: ${DB_PASS}
+      LOG_PATH: ${LOG_PATH}
     volumes: [ ".:/app" ]
     depends_on:
       postgres:
